@@ -1,2 +1,2 @@
-# cs584-project
-The repo of cs584 final project
+# cs584 course project
+The repo of cs584 course project
