@@ -51,4 +51,4 @@ def tokenize(text, no_stopwords=False, stem=False):
 if __name__ == "__main__":
     text = "This is so cool. It's like, 'would you want your \
             mother to read this??' Really great idea, well done!"
-    print(tokenize(text))
+    print(' '.join(tokenize(text)))

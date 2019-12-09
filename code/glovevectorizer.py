@@ -1,4 +1,3 @@
-import os
 import numpy as np
 
 
@@ -18,5 +17,5 @@ def generate_weights(glove_weights, word2idx, embedding_size=300):
     for word, idx in word2idx.items():
         if word in glove_weights:
             weights[word2idx[word]] = np.array(glove_weights[word])
-    
+
     return weights
