@@ -133,3 +133,7 @@ data/*
 
 # MacOS
 .DS_Store
+
+# vscode
+.vscode/
+.vscode/*
