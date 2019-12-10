@@ -6,19 +6,19 @@ import numpy as np
 
 from glovevectorizer import load_glove_weights, generate_weights
 
-BASE_DIR = '/home/kwu14/data/cs584_course_project'
-# BASE_DIR = '../data/'
+# BASE_DIR = '/home/kwu14/data/cs584_course_project'
+BASE_DIR = '../data/'
 
 DATA_SIZE = 100000
 VOCAB_SIZE = 10000
-MAX_LEN = 305
+MAX_LEN = 1000
 
-AUX_COLUMNS = ['severe_toxicity', 'obscene',
-               'identity_attack', 'insult', 'threat']
-IDENTITY_COLUMNS = [
-    'male', 'female', 'homosexual_gay_or_lesbian', 'christian', 'jewish',
-    'muslim', 'black', 'white', 'psychiatric_or_mental_illness'
-]
+# AUX_COLUMNS = ['severe_toxicity', 'obscene',
+#                'identity_attack', 'insult', 'threat']
+# IDENTITY_COLUMNS = [
+#     'male', 'female', 'homosexual_gay_or_lesbian', 'christian', 'jewish',
+#     'muslim', 'black', 'white', 'psychiatric_or_mental_illness'
+# ]
 
 
 def load_data():
@@ -70,7 +70,7 @@ def load_model(weights, num_filters=3):
     model = keras.models.Model(inputs=words, output=out)
     model.compile(
         optimizer='adam',
-        loss='binary_crossentropy',
+        loss=['binary_crossentropy', 'categorical_crossentropy'],
         metrics=['acc']
     )
     model.summary()
@@ -99,7 +99,7 @@ if __name__ == "__main__":
     )
 
     # evaluation
-    model.load_weights('cnn.model.h5')
+    model.load_weights('my_model_weights.h5')
     test_preds = model.predict(x_test)
 
     submission = pd.read_csv('./sample_submission.csv', index_col='id')

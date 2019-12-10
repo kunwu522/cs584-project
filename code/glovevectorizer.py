@@ -15,7 +15,7 @@ def load_glove_weights(filepath):
 def generate_weights(glove_weights, word2idx, num_words, embedding_size=300):
     weights = np.zeros((num_words + 1, embedding_size))
     for word, idx in word2idx.items():
-        if idx > num_words + 1:
+        if idx > num_words:
             break
         if word in glove_weights:
             weights[word2idx[word]] = np.array(glove_weights[word])
