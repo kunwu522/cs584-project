@@ -20,7 +20,8 @@ def load_data():
     tk.fit_on_texts(text_train)
     weights = generate_weights(
         load_glove_weights(os.path.join(BASE_DIR, 'glove.6B.300d.txt')),
-        tk.word_index[:VOCAB_SIZE-1]
+        tk.word_index,
+        VOCAB_SIZE
     )
 
     seq_train = tk.texts_to_sequences(text_train)
