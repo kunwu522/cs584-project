@@ -3,15 +3,14 @@ import keras
 from keras.preprocessing import text, sequence
 import pandas as pd
 
-from code.glovevectorizer import load_glove_weights, generate_weights
+from glovevectorizer import load_glove_weights, generate_weights
 
 BASE_DIR = '/home/kwu14/data/cs584_course_project'
-
 max_len = 0
 
 
 def load_data():
-    train_pd = pd.read_csv(os.path.join(BASE_DIR, 'preprocessed.train.py'))
+    train_pd = pd.read_csv(os.path.join(BASE_DIR, 'preprocessed_train.csv'))
     text_train = train_pd['comment_text'].astype(str).values
     y_train = train_pd['target'].values
 
@@ -19,7 +18,7 @@ def load_data():
     tk.fit_on_texts(text_train)
 
     weights = generate_weights(
-        load_glove_weights('./data/glove.6B.300d.txt'),
+        load_glove_weights(os.path.join(BASE_DIR, 'glove.6B.300d.txt')),
         tk.word_index
     )
 
@@ -40,11 +39,12 @@ def load_data():
     return seq_train, y_train, x_test, weights
 
 
-def load_model():
+def load_model(weights):
     words = keras.layers.Input(shape=(max_len,))
-    conv1 = keras.layers.Conv1D(10, 2)(words)
-    conv2 = keras.layers.Conv1D(10, 3)(words)
-    conv3 = keras.layers.Conv1D(10, 4)(words)
+    x = keras.layers.Embedding(weights.shape[0], weights.shape[1], weights=[weights], trainable=False)(words)
+    conv1 = keras.layers.Conv1D(10, 2)(x)
+    conv2 = keras.layers.Conv1D(10, 3)(x)
+    conv3 = keras.layers.Conv1D(10, 4)(x)
     pool1 = keras.layers.MaxPool1D(pool_size=conv1.shape[0])(conv1)
     pool2 = keras.layers.MaxPool1D(pool_size=conv2.shape[0])(conv2)
     pool3 = keras.layers.MaxPool1D(pool_size=conv3.shape[0])(conv3)
@@ -59,7 +59,7 @@ def load_model():
 if __name__ == "__main__":
     # hyper-paramters
     batch_size = 1024
-    epochs = 10
+    epochs = 50
 
     # load data
     x_train, y_train, x_test, weights = load_data()
@@ -67,7 +67,7 @@ if __name__ == "__main__":
     checkpoint = keras.callbacks.ModelCheckpoint(
         'cnn.model.h5', save_best_only=True)
     es = keras.callbacks.EarlyStopping(patience=3)
-    model = load_model()
+    model = load_model(weights)
     history = model.fit(
         x_train, y_train,
         batch_size=batch_size,
@@ -80,8 +80,8 @@ if __name__ == "__main__":
     model.load_weights('my_model_weights.h5')
     test_preds = model.predict(x_test)
 
-    submission = pd.read_csv('./data/sample_submission.csv', index_col='id')
+    submission = pd.read_csv('./sample_submission.csv', index_col='id')
     submission['prediction'] = test_preds
     submission.reset_index(drop=False, inplace=True)
     submission.head()
-    submission.to_csv('./outputs/cnn_submission.csv', index=False)
+    submission.to_csv('../outputs/cnn_submission.csv', index=False)
