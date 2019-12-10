@@ -6,7 +6,9 @@ import pandas as pd
 from glovevectorizer import load_glove_weights, generate_weights
 
 BASE_DIR = '/home/kwu14/data/cs584_course_project'
-max_len = 0
+# BASE_DIR = '../data/'
+VOCAB_SIZE = 10000
+MAX_LEN = 305
 
 
 def load_data():
@@ -14,52 +16,54 @@ def load_data():
     text_train = train_pd['comment_text'].astype(str).values
     y_train = train_pd['target'].values
 
-    tk = text.Tokenizer(num_words=10000)
+    tk = text.Tokenizer(num_words=VOCAB_SIZE)
     tk.fit_on_texts(text_train)
-
     weights = generate_weights(
         load_glove_weights(os.path.join(BASE_DIR, 'glove.6B.300d.txt')),
-        tk.word_index
+        tk.word_index[:VOCAB_SIZE-1]
     )
 
     seq_train = tk.texts_to_sequences(text_train)
-
-    max_len = 0
-    for seq in seq_train:
-        max_len = max(len(seq), max_len)
-
-    seq_train = sequence.pad_sequences(seq_train, maxlen=max_len)
+    seq_train = sequence.pad_sequences(seq_train, maxlen=MAX_LEN)
 
     # load test data
     test_df = pd.read_csv(os.path.join(BASE_DIR, 'preprocessed_test.csv'))
     x_test = test_df['comment_text'].astype(str).values
     x_test = tk.texts_to_sequences(x_test)
-    x_test = sequence.pad_sequences(x_test, maxlen=max_len)
+    x_test = sequence.pad_sequences(x_test, maxlen=MAX_LEN)
 
     return seq_train, y_train, x_test, weights
 
 
-def load_model(weights):
-    words = keras.layers.Input(shape=(max_len,))
-    x = keras.layers.Embedding(weights.shape[0], weights.shape[1], weights=[weights], trainable=False)(words)
-    conv1 = keras.layers.Conv1D(10, 2)(x)
-    conv2 = keras.layers.Conv1D(10, 3)(x)
-    conv3 = keras.layers.Conv1D(10, 4)(x)
-    pool1 = keras.layers.MaxPool1D(pool_size=conv1.shape[0])(conv1)
-    pool2 = keras.layers.MaxPool1D(pool_size=conv2.shape[0])(conv2)
-    pool3 = keras.layers.MaxPool1D(pool_size=conv3.shape[0])(conv3)
-    concat = keras.layers.Concatenate()([pool1, pool2, pool3])
-    out = keras.layers.Dense(1, activation='sigmoid')(concat)
+def load_model(weights, num_filters=3):
+    words = keras.layers.Input(shape=(None, ))
+    x = keras.layers.Embedding(weights.shape[0], weights.shape[1],
+                               weights=[weights],
+                               input_length=MAX_LEN,
+                               trainable=False)(words)
 
+    conv1 = keras.layers.Conv1D(num_filters, 2)(x)
+    conv2 = keras.layers.Conv1D(num_filters, 3)(x)
+    conv3 = keras.layers.Conv1D(num_filters, 4)(x)
+    pool1 = keras.layers.MaxPool1D(pool_size=MAX_LEN-1)(conv1)
+    pool2 = keras.layers.MaxPool1D(pool_size=MAX_LEN-2)(conv2)
+    pool3 = keras.layers.MaxPool1D(pool_size=MAX_LEN-3)(conv3)
+
+    concat = keras.layers.Concatenate(axis=1)([pool1, pool2, pool3])
+    flat = keras.layers.Flatten()(concat)
+    out = keras.layers.Dense(1, activation='sigmoid')(flat)
     model = keras.models.Model(input=words, output=out)
     model.compile(optimizer='adam', loss='binary_crossentropy',
-                  metrics=['acc', 'f1'])
+                  metrics=['acc'])
+    model.summary()
+    return model
 
 
 if __name__ == "__main__":
     # hyper-paramters
     batch_size = 1024
     epochs = 50
+    num_filters = 3
 
     # load data
     x_train, y_train, x_test, weights = load_data()
@@ -67,7 +71,7 @@ if __name__ == "__main__":
     checkpoint = keras.callbacks.ModelCheckpoint(
         'cnn.model.h5', save_best_only=True)
     es = keras.callbacks.EarlyStopping(patience=3)
-    model = load_model(weights)
+    model = load_model(weights, num_filters)
     history = model.fit(
         x_train, y_train,
         batch_size=batch_size,
