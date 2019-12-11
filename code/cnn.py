@@ -1,9 +1,14 @@
 import os
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+
+
 import keras
 from keras.preprocessing import text, sequence
 import pandas as pd
 import numpy as np
 
+from keras import backend as K
 from glovevectorizer import load_glove_weights, generate_weights
 
 BASE_DIR = '/home/kwu14/data/cs584_course_project'
@@ -11,7 +16,7 @@ BASE_DIR = '/home/kwu14/data/cs584_course_project'
 
 DATA_SIZE = 100000
 VOCAB_SIZE = 10000
-MAX_LEN = 305
+MAX_LEN = 166
 
 AUX_COLUMNS = ['severe_toxicity', 'obscene',
                'identity_attack', 'insult', 'threat']
@@ -45,6 +50,30 @@ def load_data():
     x_test = sequence.pad_sequences(x_test, maxlen=MAX_LEN)
 
     return seq_train, y_train, x_test, weights
+
+def load_cnn_model(weights):
+    sequence_input = Input(shape=(MAX_SEQUENCE_LENGTH,), dtype='int32')
+    embedded_sequences = keras.layers.Embedding(weights.shape[0], weights.shape[1],
+                               weights=[weights],
+                               input_length=MAX_LEN,
+                               trainable=False)(sequence_input)
+    l_cov1= Conv1D(128, 5, activation='relu')(embedded_sequences)
+    l_pool1 = MaxPooling1D(5)(l_cov1)
+    l_cov2 = Conv1D(128, 5, activation='relu')(l_pool1)
+    l_pool2 = MaxPooling1D(5)(l_cov2)
+    l_cov3 = Conv1D(128, 5, activation='relu')(l_pool2)
+    l_pool3 = MaxPooling1D(35)(l_cov3)  # global max pooling
+    l_flat = Flatten()(l_pool3)
+    l_dense = Dense(128, activation='relu')(l_flat)
+    preds = Dense(1, activation='sigmoid')(l_dense)
+    model = keras.models.Model(inputs=words, output=out)
+    model.compile(
+        optimizer='adam',
+        loss='binary_crossentropy',
+        metrics=['acc']
+    )
+    model.summary()
+    return model
 
 
 def load_model(weights, num_filters=3):
@@ -87,15 +116,17 @@ if __name__ == "__main__":
     x_train, y_train, x_test, weights = load_data()
 
     checkpoint = keras.callbacks.ModelCheckpoint(
-        'cnn.model.h5', save_best_only=True)
-    es = keras.callbacks.EarlyStopping(patience=3)
-    model = load_model(weights, num_filters)
+        'cnn.model.h5', save_best_only=True, verbose=1)
+    es = keras.callbacks.EarlyStopping(patience=3, verbose=1)
+    # model = load_model(weights, num_filters)
+    model = load_cnn_model(weights)
     history = model.fit(
         x_train, y_train,
         batch_size=batch_size,
         validation_split=0.2,
         epochs=epochs,
-        callbacks=[es, checkpoint]
+        callbacks=[es, checkpoint],
+        verbose=2
     )
 
     # evaluation

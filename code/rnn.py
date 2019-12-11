@@ -1,12 +1,15 @@
 import os
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+
 import keras
 from keras.preprocessing import text, sequence
 import pandas as pd
 
 from glovevectorizer import load_glove_weights, generate_weights
 
-# BASE_DIR = '/home/kwu14/data/cs584_course_project'
-BASE_DIR = '../data/'
+BASE_DIR = '/home/kwu14/data/cs584_course_project'
+# BASE_DIR = '../data/'
 VOCAB_SIZE = 10000
 MAX_LEN = 305
 
@@ -65,19 +68,20 @@ if __name__ == "__main__":
     x_train, y_train, x_test, weights = load_data()
 
     checkpoint = keras.callbacks.ModelCheckpoint(
-        'cnn.model.h5', save_best_only=True)
-    es = keras.callbacks.EarlyStopping(patience=3)
+        'rnn.model.h5', save_best_only=True, verbose=1)
+    es = keras.callbacks.EarlyStopping(patience=3, verbose=1)
     model = load_model(weights, hidden_size)
     history = model.fit(
         x_train, y_train,
         batch_size=batch_size,
         validation_split=0.2,
         epochs=epochs,
-        callbacks=[es, checkpoint]
+        callbacks=[es, checkpoint],
+        verbose=2
     )
 
     # evaluation
-    model.load_weights('my_model_weights.h5')
+    model.load_weights('rnn.model.h5')
     test_preds = model.predict(x_test)
 
     submission = pd.read_csv('./sample_submission.csv', index_col='id')

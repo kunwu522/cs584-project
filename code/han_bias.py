@@ -1,4 +1,7 @@
 import os
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
 import keras
 from keras.preprocessing import text
 from keras.engine.topology import Layer
@@ -14,8 +17,8 @@ from nltk.tokenize import sent_tokenize
 
 from glovevectorizer import load_glove_weights, generate_weights
 
-# BASE_DIR = '/home/kwu14/data/cs584_course_project'
-BASE_DIR = '../data/'
+BASE_DIR = '/home/kwu14/data/cs584_course_project'
+# BASE_DIR = '../data/'
 
 VOCAB_SIZE = 10000
 
