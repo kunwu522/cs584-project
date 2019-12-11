@@ -140,7 +140,7 @@ if __name__ == "__main__":
         epochs=epochs,
         callbacks=[es, checkpoint],
         verbose=2,
-        sample_weight=sample_weights.values
+        # sample_weight=sample_weights.values
     )
 
     # evaluation
