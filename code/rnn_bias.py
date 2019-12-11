@@ -5,8 +5,10 @@ import os
 from glovevectorizer import load_glove_weights, generate_weights
 import pandas as pd
 import numpy as np
-from keras.preprocessing import text, sequence
 import keras
+from keras.preprocessing import text, sequence
+from keras.layers import add, concatenate, Dense
+from keras.layers import GlobalMaxPooling1D, GlobalAveragePooling1D
 
 
 # BASE_DIR = '/home/kwu14/data/cs584_course_project'
@@ -61,16 +63,21 @@ def load_data():
 
 
 def load_model(weights, hidden_size=100):
-    words = keras.layers.Input(shape=(None, ), name='input_layer')
+    words = keras.layers.Input(shape=(MAX_LEN, ), name='input_layer')
     x = keras.layers.Embedding(weights.shape[0], weights.shape[1],
                                weights=[weights], trainable=False,
                                name='embedding_layer')(words)
     x = keras.layers.Bidirectional(keras.layers.LSTM(hidden_size,
-                                                     return_sequences=False,
+                                                     return_sequences=True,
                                                      name='lstm1'))(x)
-
-    x = keras.layers.Dense(100, activation='relu')(x)
-    out = keras.layers.Dense(1, activation='sigmoid')(x)
+    x = keras.layers.Bidirectional(keras.layers.LSTM(hidden_size,
+                                                     return_sequences=True,
+                                                     name='lstm2'))(x)
+    hidden = concatenate(
+        [GlobalMaxPooling1D()(x), GlobalAveragePooling1D()(x), ])
+    hidden = add([hidden, Dense(400, activation='relu')(hidden)])
+    hidden = add([hidden, Dense(400, activation='relu')(hidden)])
+    out = Dense(1, activation='sigmoid')(hidden)
 
     model = keras.models.Model(inputs=words, output=out)
     model.compile(loss='binary_crossentropy',
