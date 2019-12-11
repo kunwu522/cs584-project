@@ -1,6 +1,6 @@
 import os
 import keras
-from keras.preprocessing import text, sequence
+from keras.preprocessing import text
 from keras.engine.topology import Layer
 from keras.layers import Bidirectional, LSTM, TimeDistributed
 from keras.layers import Input, Embedding, Dense, Dropout
@@ -11,7 +11,6 @@ from keras import backend as K
 import pandas as pd
 import numpy as np
 from nltk.tokenize import sent_tokenize
-from tqdm import tqdm
 
 from glovevectorizer import load_glove_weights, generate_weights
 
@@ -100,7 +99,8 @@ def load_data():
                     x_test[i, j, k] = idx[0]
                     k += 1
 
-    return x_train, y_train, y_aux_train, x_test, embedding_matrix, sample_weights
+    return x_train, y_train, y_aux_train, test_df.id, x_test, \
+        embedding_matrix, sample_weights
 
 
 def dot_product(x, kernel):
@@ -122,7 +122,8 @@ class AttentionWithContext(Layer):
     """
     Attention operation, with a context/query vector, for temporal data.
     Supports Masking.
-    Follows the work of Yang et al. [https://www.cs.cmu.edu/~diyiy/docs/naacl16.pdf]
+    Follows the work of Yang et al.
+    [https://www.cs.cmu.edu/~diyiy/docs/naacl16.pdf]
     "Hierarchical Attention Networks for Document Classification"
     by using a context vector to assist the attention
     # Input shape
@@ -130,7 +131,8 @@ class AttentionWithContext(Layer):
     # Output shape
         2D tensor with shape: `(samples, features)`.
     How to use:
-    Just put it on top of an RNN Layer (GRU/LSTM/SimpleRNN) with return_sequences=True.
+    Just put it on top of an RNN Layer (GRU/LSTM/SimpleRNN) with
+    return_sequences=True.
     The dimensions are inferred based on the output shape of the RNN.
     Note: The layer has been tested with Keras 2.0.6
     Example:
@@ -201,8 +203,10 @@ class AttentionWithContext(Layer):
             # Cast the mask to floatX to avoid float64 upcasting in theano
             a *= K.cast(mask, K.floatx())
 
-        # in some cases especially in the early stages of training the sum may be almost zero
-        # and this results in NaN's. A workaround is to add a very small positive number ε to the sum.
+        # in some cases especially in the early stages of training
+        # the sum may be almost zero
+        # and this results in NaN's. A workaround is to add a very small
+        # positive number ε to the sum.
         # a /= K.cast(K.sum(a, axis=1, keepdims=True), K.floatx())
         a /= K.cast(K.sum(a, axis=1, keepdims=True) + K.epsilon(), K.floatx())
 
@@ -241,11 +245,11 @@ def load_model(weights, hidden_size=100):
         Dense(256, kernel_regularizer=l2_reg))(sent_lstm)
     sent_att = Dropout(0.5)(AttentionWithContext()(sent_dense))
     out = Dense(1, activation='sigmoid')(sent_att)
-    aux_out = Dense(len(AUX_COLUMNS), activation='softmax')(sent_att)
+    aux_out = Dense(len(AUX_COLUMNS), activation='sigmoid')(sent_att)
     model = Model(inputs=sent_input, outputs=[out, aux_out])
     model.compile(
         optimizer='adam',
-        loss=['binary_crossentropy', 'categorical_crossentropy'],
+        loss='binary_crossentropy',
         metrics=['acc']
     )
     model.summary()
@@ -259,7 +263,8 @@ if __name__ == "__main__":
     hidden_size = 512
 
     # load data
-    x_train, y_train, y_aux_train, x_test, weights, sample_weights = load_data()
+    x_train, y_train, y_aux_train, test_id,\
+        x_test, weights, sample_weights = load_data()
 
     checkpoint = keras.callbacks.ModelCheckpoint(
         'han_bias_model.h5', save_best_only=True)
@@ -278,8 +283,8 @@ if __name__ == "__main__":
     model.load_weights('han_bias_model.h5')
     test_preds = model.predict(x_test)
 
-    submission = pd.read_csv('./sample_submission.csv', index_col='id')
-    submission['prediction'] = test_preds
-    submission.reset_index(drop=False, inplace=True)
-    submission.head()
-    submission.to_csv('../outputs/han_bias_submission.csv', index=False)
+    submission = pd.DataFrame.from_dict({
+        'id': test_id,
+        'prediction': test_preds
+    })
+    submission.to_csv('han_bias_submission.csv', index=False)
