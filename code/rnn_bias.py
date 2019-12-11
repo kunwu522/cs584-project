@@ -1,27 +1,51 @@
 import os
-import keras
-from keras.preprocessing import text, sequence
-import pandas as pd
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+# os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 from glovevectorizer import load_glove_weights, generate_weights
+import pandas as pd
+import numpy as np
+from keras.preprocessing import text, sequence
+import keras
+
 
 # BASE_DIR = '/home/kwu14/data/cs584_course_project'
 BASE_DIR = '../data/'
 VOCAB_SIZE = 10000
-MAX_LEN = 305
+MAX_LEN = 166
+
+AUX_COLUMNS = ['severe_toxicity', 'obscene',
+               'identity_attack', 'insult', 'threat']
+IDENTITY_COLUMNS = [
+    'male', 'female', 'homosexual_gay_or_lesbian', 'christian', 'jewish',
+    'muslim', 'black', 'white', 'psychiatric_or_mental_illness'
+]
 
 
 def load_data():
-    train_pd = pd.read_csv(os.path.join(BASE_DIR, 'preprocessed_train.csv'))
-    text_train = train_pd['comment_text'].astype(str).values
-    y_train = train_pd['target'].values
+    train_df = pd.read_csv(os.path.join(BASE_DIR, 'preprocessed_train.csv'))
+    train_df['target'] = np.where(train_df['target'] >= 0.5, True, False)
+
+    text_train = train_df['comment_text'].astype(str).values
+    y_train = train_df['target'].values
+
+    for column in IDENTITY_COLUMNS:
+        train_df[column] = np.where(train_df[column] >= 0.5, True, False)
+
+    sample_weights = np.ones(train_df.shape[0], dtype=np.float32)
+    sample_weights += train_df[IDENTITY_COLUMNS].sum(axis=1)
+    sample_weights += train_df['target'] * \
+        (~train_df[IDENTITY_COLUMNS]).sum(axis=1)
+    sample_weights += (~train_df['target']) * \
+        train_df[IDENTITY_COLUMNS].sum(axis=1) * 5
+    sample_weights /= sample_weights.mean()
 
     tk = text.Tokenizer(num_words=VOCAB_SIZE)
     tk.fit_on_texts(text_train)
     weights = generate_weights(
         load_glove_weights(os.path.join(BASE_DIR, 'glove.6B.300d.txt')),
         tk.word_index,
-        VOCAB_SIZE
+        VOCAB_SIZE - 1
     )
 
     seq_train = tk.texts_to_sequences(text_train)
@@ -33,7 +57,7 @@ def load_data():
     x_test = tk.texts_to_sequences(x_test)
     x_test = sequence.pad_sequences(x_test, maxlen=MAX_LEN)
 
-    return seq_train, y_train, x_test, weights
+    return seq_train, y_train, test_df.id, x_test, weights, sample_weights
 
 
 def load_model(weights, hidden_size=100):
@@ -62,26 +86,28 @@ if __name__ == "__main__":
     hidden_size = 100
 
     # load data
-    x_train, y_train, x_test, weights = load_data()
+    x_train, y_train, test_id, x_test, weights, sample_weights = load_data()
 
     checkpoint = keras.callbacks.ModelCheckpoint(
-        'cnn.model.h5', save_best_only=True)
-    es = keras.callbacks.EarlyStopping(patience=3)
+        'rnn_bias.model.h5', save_best_only=True, verbose=1)
+    es = keras.callbacks.EarlyStopping(patience=3, verbose=1)
     model = load_model(weights, hidden_size)
     history = model.fit(
         x_train, y_train,
         batch_size=batch_size,
         validation_split=0.2,
         epochs=epochs,
-        callbacks=[es, checkpoint]
+        callbacks=[es, checkpoint],
+        verbose=2,
+        sample_weight=sample_weights.values
     )
 
     # evaluation
-    model.load_weights('my_model_weights.h5')
+    model.load_weights('rnn_bias.model.h5')
     test_preds = model.predict(x_test)
 
-    submission = pd.read_csv('./sample_submission.csv', index_col='id')
-    submission['prediction'] = test_preds
-    submission.reset_index(drop=False, inplace=True)
-    submission.head()
-    submission.to_csv('../outputs/rnn_submission.csv', index=False)
+    submission = pd.DataFrame.from_dict({
+        'id': test_id,
+        'prediction': test_preds
+    })
+    submission.to_csv('rnn_bias_submission.csv', index=False)
