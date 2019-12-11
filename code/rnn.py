@@ -1,12 +1,11 @@
+from glovevectorizer import load_glove_weights, generate_weights
+import pandas as pd
+from keras.preprocessing import text, sequence
+import keras
 import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
-import keras
-from keras.preprocessing import text, sequence
-import pandas as pd
-
-from glovevectorizer import load_glove_weights, generate_weights
 
 BASE_DIR = '/home/kwu14/data/cs584_course_project'
 # BASE_DIR = '../data/'
@@ -36,7 +35,7 @@ def load_data():
     x_test = tk.texts_to_sequences(x_test)
     x_test = sequence.pad_sequences(x_test, maxlen=MAX_LEN)
 
-    return seq_train, y_train, x_test, weights
+    return seq_train, y_train, test_df.id, x_test, weights
 
 
 def load_model(weights, hidden_size=100):
@@ -65,7 +64,7 @@ if __name__ == "__main__":
     hidden_size = 100
 
     # load data
-    x_train, y_train, x_test, weights = load_data()
+    x_train, y_train, test_id, x_test, weights = load_data()
 
     checkpoint = keras.callbacks.ModelCheckpoint(
         'rnn.model.h5', save_best_only=True, verbose=1)
@@ -84,8 +83,8 @@ if __name__ == "__main__":
     model.load_weights('rnn.model.h5')
     test_preds = model.predict(x_test)
 
-    submission = pd.read_csv('./sample_submission.csv', index_col='id')
-    submission['prediction'] = test_preds
-    submission.reset_index(drop=False, inplace=True)
-    submission.head()
-    submission.to_csv('../outputs/rnn_submission.csv', index=False)
+    submission = pd.DataFrame.from_dict({
+        'id': test_id,
+        'prediction': test_preds
+    })
+    submission.to_csv('rnn_submission.csv', index=False)

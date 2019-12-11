@@ -6,13 +6,12 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 import keras
 from keras.preprocessing import text, sequence
 import pandas as pd
-import numpy as np
 
 from keras import backend as K
 from glovevectorizer import load_glove_weights, generate_weights
 
-BASE_DIR = '/home/kwu14/data/cs584_course_project'
-# BASE_DIR = '../data/'
+# BASE_DIR = '/home/kwu14/data/cs584_course_project'
+BASE_DIR = '../data/'
 
 DATA_SIZE = 100000
 VOCAB_SIZE = 10000
@@ -49,7 +48,7 @@ def load_data():
     x_test = tk.texts_to_sequences(x_test)
     x_test = sequence.pad_sequences(x_test, maxlen=MAX_LEN)
 
-    return seq_train, y_train, x_test, weights
+    return seq_train, y_train, test_df.id, x_test, weights
 
 def load_cnn_model(weights):
     sequence_input = Input(shape=(MAX_SEQUENCE_LENGTH,), dtype='int32')
@@ -113,7 +112,7 @@ if __name__ == "__main__":
     num_filters = 5
 
     # load data
-    x_train, y_train, x_test, weights = load_data()
+    x_train, y_train, test_id, x_test, weights = load_data()
 
     checkpoint = keras.callbacks.ModelCheckpoint(
         'cnn.model.h5', save_best_only=True, verbose=1)
@@ -133,8 +132,8 @@ if __name__ == "__main__":
     model.load_weights('cnn.model.h5')
     test_preds = model.predict(x_test)
 
-    submission = pd.read_csv('./sample_submission.csv', index_col='id')
-    submission['prediction'] = test_preds
-    submission.reset_index(drop=False, inplace=True)
-    submission.head()
-    submission.to_csv('../outputs/cnn_submission.csv', index=False)
+    submission = pd.DataFrame.from_dict({
+        'id': test_id,
+        'prediction': test_preds
+    })
+    submission.to_csv('cnn_submission.csv', index=False)
