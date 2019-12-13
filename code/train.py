@@ -199,10 +199,23 @@ if __name__ == "__main__":
     if torch.cuda.is_available():
         x_test = x_test.cuda(torch.device('cuda'))
 
-    test_preds = model(x_test)
+    test_set = CommentsDataset((x_test, None))
+    test_loader = DataLoader(test_set, batch_size=1000)
+    predict_Y = []
+
+    with torch.no_grad():
+        for x_test, _ in test_loader:
+            if torch.cuda.is_available():
+                x_test = x_test.cuda(torch.device('cuda'))
+
+            y_pred_test = model(x_test)
+
+            predict_Y.extend(torch.where(predict_y.cpu(), torch.ones(
+                predict_y.size(), torch.zeros(predict_y.size()))).tolist())
+
     submission = pd.DataFrame.from_dict({
         'id': test_id,
-        'prediction': np.array(test_preds.flatten().tolist())
+        'prediction': np.array(predict_Y)
     })
     bias = 'bias' if args.bias else ''
     submission.to_csv(
