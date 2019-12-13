@@ -14,8 +14,8 @@ from lstm import LSTMClassifier
 from cnn_pytorch import TextCNN3
 from glovevectorizer import load_glove_weights, generate_weights
 
-# BASE_DIR = '/home/kwu14/data/cs584_course_project'
-BASE_DIR = '../data/'
+BASE_DIR = '/home/kwu14/data/cs584_course_project'
+# BASE_DIR = '../data/'
 
 DATA_SIZE = 200000
 
@@ -155,7 +155,7 @@ if __name__ == "__main__":
 
             num_corrects = torch.eq(
                 torch.where(predict_y >= 0.5, torch.ones(predict_y.size()),
-                            torch.zeros(predict_y.size())),
+                            torch.zeros(predict_y.size())).cpu(),
                 y_train.cpu()).sum()
             acc = 100.0 * num_corrects / batch_size
 
@@ -177,8 +177,10 @@ if __name__ == "__main__":
                 y_pred_val = model(x_val)
                 val_loss = F.binary_cross_entropy(y_pred_val, y_val)
 
-            num_corrects = torch.eq(torch.where(
-                predict_y >= 0.5, 1, 0), y_train.cpu()).sum()
+            num_corrects = torch.eq(
+                torch.where(predict_y >= 0.5, torch.ones(predict_y.size()),
+                            torch.zeros(predict_y.size())).cpu(),
+                y_train.cpu()).sum()
             acc = 100.0 * num_corrects / batch_size
             total_val_acc += acc.item()
             total_val_loss += val_loss.cpu().item()
@@ -192,6 +194,10 @@ if __name__ == "__main__":
               'Training loss: {:.4f}, acc: {:.4f}'.format(
                   train_loss, train_acc),
               'Val loss: {:.4f}, acc:{:.4f}'.format(val_loss, val_acc))
+
+    x_test = torch.LongTensor(x_test)
+    if torch.cuda.is_available():
+        x_test = x_test.cuda(torch.device('cuda'))
 
     test_preds = model(x_test)
     submission = pd.DataFrame.from_dict({
