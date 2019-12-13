@@ -14,8 +14,8 @@ from lstm import LSTMClassifier
 from cnn_pytorch import TextCNN3
 from glovevectorizer import load_glove_weights, generate_weights
 
-# BASE_DIR = '/home/kwu14/data/cs584_course_project'
-BASE_DIR = '../data/'
+BASE_DIR = '/home/kwu14/data/cs584_course_project'
+# BASE_DIR = '../data/'
 
 DATA_SIZE = 200000
 
@@ -120,6 +120,9 @@ if __name__ == "__main__":
                                EMBEDDING_SIZE, embedding_weights)
     elif args.model == 'cnn':
         model = TextCNN3(EMBEDDING_SIZE, 3, 1, VOCAB_SIZE, embedding_weights)
+
+    if torch.cuda.is_available():
+        model.cuda(torch.device('cuda'))
 
     optimizer = torch.optim.Adam(model.parameters(), learning_rate)
 
