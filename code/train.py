@@ -135,7 +135,7 @@ if __name__ == "__main__":
             x_train = x_train.long()
             y_train = y_train.float().unsqueeze(1)
             weight = weight.unsqueeze(1)
-            print(f'weight shape {weight.shape}')
+
             if torch.cuda.is_available():
                 x_train = x_train.cuda(torch.device('cuda'))
                 y_train = y_train.cuda(torch.device('cuda'))
