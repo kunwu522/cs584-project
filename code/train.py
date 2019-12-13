@@ -134,10 +134,12 @@ if __name__ == "__main__":
         for x_train, y_train, weight in tqdm(train_loader, desc=f'Epoch {t}'):
             x_train = x_train.long()
             y_train = y_train.float().unsqueeze(1)
+            weight = weight.unsqueeze(1)
             print(f'weight shape {weight.shape}')
             if torch.cuda.is_available():
                 x_train = x_train.cuda(torch.device('cuda'))
                 y_train = y_train.cuda(torch.device('cuda'))
+                weight = weight.cuda(torch.device('cuda'))
 
             optimizer.zero_grad()
             predict_y = model(x_train)
