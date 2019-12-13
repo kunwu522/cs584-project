@@ -154,8 +154,8 @@ if __name__ == "__main__":
             optimizer.step()
 
             num_corrects = torch.eq(
-                torch.where(predict_y >= 0.5, torch.ones(predict_y.size()),
-                            torch.zeros(predict_y.size())).cpu(),
+                torch.where(predict_y.cpu() >= 0.5, torch.ones(predict_y.size()),
+                            torch.zeros(predict_y.size())),
                 y_train.cpu()).sum()
             acc = 100.0 * num_corrects / batch_size
 
@@ -178,7 +178,7 @@ if __name__ == "__main__":
                 val_loss = F.binary_cross_entropy(y_pred_val, y_val)
 
             num_corrects = torch.eq(
-                torch.where(predict_y >= 0.5, torch.ones(predict_y.size()),
+                torch.where(predict_y.cpu() >= 0.5, torch.ones(predict_y.size()),
                             torch.zeros(predict_y.size())).cpu(),
                 y_train.cpu()).sum()
             acc = 100.0 * num_corrects / batch_size
