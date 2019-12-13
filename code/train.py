@@ -211,7 +211,7 @@ if __name__ == "__main__":
             y_pred_test = model(x_test)
 
             predict_Y.extend(torch.where(predict_y.cpu(), torch.ones(
-                predict_y.size(), torch.zeros(predict_y.size()))).tolist())
+                predict_y.size()), torch.zeros(predict_y.size())).tolist())
 
     submission = pd.DataFrame.from_dict({
         'id': test_id,
