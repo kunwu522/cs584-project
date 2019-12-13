@@ -135,7 +135,7 @@ if __name__ == "__main__":
             x_train = x_train.long()
             y_train = y_train.float().unsqueeze(1)
             weight = weight.unsqueeze(1)
-
+            print(f'weight shape {weight.shape}')
             if torch.cuda.is_available():
                 x_train = x_train.cuda(torch.device('cuda'))
                 y_train = y_train.cuda(torch.device('cuda'))
@@ -150,8 +150,8 @@ if __name__ == "__main__":
             loss.backward()
             optimizer.step()
 
-            num_corrects = torch.eq(torch.argmax(
-                predict_y.cpu(), 1), y_train.cpu()).sum()
+            num_corrects = torch.eq(torch.where(
+                predict_y >= 0.5, 1, 0), y_train.cpu()).sum()
             acc = 100.0 * num_corrects / batch_size
 
             total_epoch_acc += acc.item()
@@ -172,9 +172,9 @@ if __name__ == "__main__":
                 y_pred_val = model(x_val)
                 val_loss = F.binary_cross_entropy(y_pred_val, y_val)
 
-            number_corrects = torch.eq(torch.argmax(
-                y_pred_val.cpu(), 1), y_val.cpu()).sum()
-            acc = 100.0 * number_corrects / batch_size
+            num_corrects = torch.eq(torch.where(
+                predict_y >= 0.5, 1, 0), y_train.cpu()).sum()
+            acc = 100.0 * num_corrects / batch_size
             total_val_acc += acc.item()
             total_val_loss += val_loss.cpu().item()
 
