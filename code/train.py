@@ -14,8 +14,8 @@ from lstm import LSTMClassifier
 from cnn_pytorch import TextCNN3
 from glovevectorizer import load_glove_weights, generate_weights
 
-BASE_DIR = '/home/kwu14/data/cs584_course_project'
-# BASE_DIR = '../data/'
+# BASE_DIR = '/home/kwu14/data/cs584_course_project'
+BASE_DIR = '../data/'
 
 DATA_SIZE = 200000
 
@@ -138,7 +138,7 @@ if __name__ == "__main__":
             x_train = x_train.long()
             y_train = y_train.float().unsqueeze(1)
             weight = weight.unsqueeze(1)
-            print(f'weight shape {weight.shape}')
+
             if torch.cuda.is_available():
                 x_train = x_train.cuda(torch.device('cuda'))
                 y_train = y_train.cuda(torch.device('cuda'))
@@ -153,8 +153,10 @@ if __name__ == "__main__":
             loss.backward()
             optimizer.step()
 
-            num_corrects = torch.eq(torch.where(
-                predict_y >= 0.5, 1, 0), y_train.cpu()).sum()
+            num_corrects = torch.eq(
+                torch.where(predict_y >= 0.5, torch.ones(predict_y.size()),
+                            torch.zeros(predict_y.size())),
+                y_train.cpu()).sum()
             acc = 100.0 * num_corrects / batch_size
 
             total_epoch_acc += acc.item()
